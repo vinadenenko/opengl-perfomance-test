@@ -1,9 +1,10 @@
 #pragma once
 
+// GLEW must be included before any other OpenGL headers
+#include <GL/glew.h>
+
 #include <string>
 #include <vector>
-#include <GL/glew.h>
-// #include <GL/gl.h>
 #include <glm/glm.hpp>
 
 

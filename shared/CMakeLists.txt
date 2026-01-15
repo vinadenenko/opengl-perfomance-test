@@ -4,6 +4,7 @@ add_library(shared STATIC
     src/terrain_generator.cpp
     src/performance_monitor.cpp
     src/gl_utils.cpp
+    # include/gl_utils.h
 )
 
 target_include_directories(shared PUBLIC

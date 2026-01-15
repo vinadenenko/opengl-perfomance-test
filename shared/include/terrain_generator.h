@@ -1,7 +1,9 @@
 #pragma once
 
-#include <vector>
+// GLEW must be included before any other OpenGL headers
 #include <GL/glew.h>
+
+#include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
