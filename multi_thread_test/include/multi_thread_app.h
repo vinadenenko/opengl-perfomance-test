@@ -1,9 +1,11 @@
 #pragma once
 
+// Include GLEW first (via gl_utils.h) before GLFW to avoid header conflicts
+#include "gl_utils.h"
+#include <GLFW/glfw3.h>
 #include <memory>
 #include "terrain_generator.h"
 #include "performance_monitor.h"
-#include "gl_utils.h"
 #include "render_thread.h"
 
 class MultiThreadApp {

@@ -1,5 +1,7 @@
 #pragma once
 
+// Include GLEW first before GLFW to avoid header conflicts
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <thread>
 #include <mutex>

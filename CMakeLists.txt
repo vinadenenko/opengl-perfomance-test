@@ -71,7 +71,7 @@ if(BUILD_SINGLE_THREAD)
 endif()
 
 if(BUILD_MULTI_THREAD)
-    # add_subdirectory(multi_thread_test)
+    add_subdirectory(multi_thread_test)
 endif()
 
 # Print configuration summary
