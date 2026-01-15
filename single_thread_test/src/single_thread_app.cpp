@@ -1,6 +1,7 @@
 #include "single_thread_app.h"
 #include <iostream>
 #include <GLFW/glfw3.h>
+#include <GL/glew.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -43,13 +44,6 @@ bool SingleThreadApp::initialize() {
     
     perfMonitor_ = std::make_unique<PerformanceMonitor>();
     
-    // Initialize GLAD if needed (or GLEW)
-    // glewExperimental = GL_TRUE;
-    // if (glewInit() != GLEW_OK) {
-    //     std::cerr << "Failed to initialize GLEW!" << std::endl;
-    //     return false;
-    // }
-    
     std::cout << "Single-Thread Application initialized successfully!" << std::endl;
     return true;
 }
@@ -77,6 +71,23 @@ bool SingleThreadApp::initializeGL() {
     glfwSetScrollCallback(window_, scrollCallback);
     
     glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    
+    // Initialize GLEW immediately after OpenGL context is created
+    glewExperimental = GL_TRUE;
+    GLenum glewError = glewInit();
+    if (glewError != GLEW_OK) {
+        std::cerr << "Failed to initialize GLEW! Error: " << glewGetErrorString(glewError) << std::endl;
+        return false;
+    }
+    
+    // Check if GLEW initialized successfully
+    if (!glewIsSupported("GL_VERSION_3_3")) {
+        std::cerr << "OpenGL 3.3 not supported!" << std::endl;
+        return false;
+    }
+    
+    std::cout << "GLEW initialized successfully!" << std::endl;
+    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
     
     return true;
 }
