@@ -30,6 +30,11 @@ struct TerrainPatch {
 class TerrainGenerator {
 public:
     TerrainGenerator(int gridSize = 256, float patchSize = 1.0f, float heightScale = 20.0f);
+    
+    // Configuration methods
+    void setGridSize(int gridSize) { gridSize_ = gridSize; }
+    void setPatchCount(int patchCount) { patchesPerRow_ = std::sqrt(patchCount); }
+    void setHeightScale(float scale) { heightScale_ = scale; }
     ~TerrainGenerator();
 
     // Generate terrain data
@@ -63,6 +68,7 @@ private:
     int gridSize_;
     float patchSize_;
     float heightScale_;
+    int patchesPerRow_;
     std::vector<TerrainPatch> patches_;
     
     // Perlin noise

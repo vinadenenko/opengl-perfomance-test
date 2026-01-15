@@ -107,6 +107,16 @@ bool MultiThreadApp::initializeTerrain() {
     return true;
 }
 
+void MultiThreadApp::configureTerrain(int gridSize, int patchCount, float heightScale) {
+    if (terrainGenerator_) {
+        terrainGenerator_->setGridSize(gridSize);
+        terrainGenerator_->setPatchCount(patchCount);
+        terrainGenerator_->setHeightScale(heightScale);
+        terrainGenerator_->generateTerrain();
+        totalPatches_ = terrainGenerator_->getPatches().size();
+    }
+}
+
 bool MultiThreadApp::initializeShaders() {
     terrainShader_.load("shaders/basic.vert", "shaders/terrain.frag");
     if (!terrainShader_.isValid()) {

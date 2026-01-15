@@ -2,6 +2,7 @@
 #include <iostream>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include "../../shared/include/terrain_generator.h"
 
 RenderThread::RenderThread()
     : workerContext_(nullptr), contextInitialized_(false),
@@ -82,13 +83,16 @@ void RenderThread::submitTask(const RenderTask& task) {
     queueCondition_.notify_one();
 }
 
-void RenderThread::submitPatchUpload(int patchId, void* vertexData, size_t vertexSize, 
-                                   void* indexData, size_t indexSize) {
-    // For now, we'll implement a simplified version
-    RenderTask task(RenderTask::UPLOAD_PATCH, patchId, nullptr, 0);
-    submitTask(task);
-    
-    std::cout << "Submitted patch upload task for patch " << patchId << std::endl;
+void RenderThread::submitPatchUpload(int patchId, void* vertexData, size_t vertexSize,
+                                    void* indexData, size_t indexSize) {
+    {
+        std::lock_guard<std::mutex> lock(queueMutex_);
+        // Store vertex data and size, and pass index data by storing size in upper bits
+        // We'll use a simple encoding: store indexSize in high 32 bits, vertexSize in low 32 bits
+        uint64_t encodedSize = (static_cast<uint64_t>(indexSize) << 32) | static_cast<uint64_t>(vertexSize);
+        taskQueue_.push(RenderTask(RenderTask::UPLOAD_PATCH, patchId, vertexData, encodedSize));
+    }
+    queueCondition_.notify_one();
 }
 
 void RenderThread::waitForCompletion() {
@@ -158,9 +162,14 @@ void RenderThread::threadFunction() {
 }
 
 void RenderThread::processTask(const RenderTask& task) {
+    // Decode the encoded sizes
+    size_t vertexSize = static_cast<size_t>(task.dataSize & 0xFFFFFFFF);
+    size_t indexSize = static_cast<size_t>(task.dataSize >> 32);
+    
     switch (task.type) {
         case RenderTask::UPLOAD_PATCH:
-            uploadPatchData(task.patchId, task.data, task.dataSize, nullptr, 0);
+            uploadPatchData(task.patchId, task.data, vertexSize, 
+                              reinterpret_cast<void*>(indexSize), indexSize);
             break;
             
         case RenderTask::UPDATE_BUFFER:
@@ -183,14 +192,51 @@ void RenderThread::processTask(const RenderTask& task) {
 
 void RenderThread::uploadPatchData(int patchId, void* vertexData, size_t vertexSize,
                                 void* indexData, size_t indexSize) {
-    // This is a simplified implementation
-    // In a real implementation, this would upload vertex/index data to GPU
+    // Actually upload vertex/index data to GPU
+    
+    // Convert byte sizes to vertex/index counts
+    size_t vertexCount = vertexSize / sizeof(TerrainVertex);
+    size_t indexCount = indexSize / sizeof(unsigned int);
     
     std::cout << "Worker thread: Uploading patch " << patchId << " data (" 
-              << vertexSize << " vertices, " << indexSize << " indices)" << std::endl;
+              << vertexCount << " vertices, " << indexCount << " indices)" << std::endl;
     
-    // Simulate some work
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // Create GPU resources for this patch
+    GLuint VAO, VBO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+    
+    glBindVertexArray(VAO);
+    
+    // Upload vertex data (vertexSize is already in bytes)
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vertexSize, vertexData, GL_STATIC_DRAW);
+    
+    // Upload index data (indexSize is already in bytes)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexSize, indexData, GL_STATIC_DRAW);
+    
+    // Set up vertex attributes
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(TerrainVertex), 
+                        (void*)offsetof(TerrainVertex, position));
+    glEnableVertexAttribArray(0);
+    
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(TerrainVertex),
+                        (void*)offsetof(TerrainVertex, normal));
+    glEnableVertexAttribArray(1);
+    
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(TerrainVertex),
+                        (void*)offsetof(TerrainVertex, texCoord));
+    glEnableVertexAttribArray(2);
+    
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(TerrainVertex),
+                        (void*)offsetof(TerrainVertex, color));
+    glEnableVertexAttribArray(3);
+    
+    // Store the patch data (in a real implementation, this would be more sophisticated)
+    // For now, we'll just complete the upload
+    glBindVertexArray(0);
     
     std::cout << "Worker thread: Patch " << patchId << " upload completed!" << std::endl;
 }
