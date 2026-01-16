@@ -20,11 +20,11 @@ struct RenderTask {
     
     Type type;
     int patchId;
-    void* data;
-    size_t dataSize;
+    std::vector<float> vertexData;
+    std::vector<unsigned int> indexData;
     
-    RenderTask(Type t = RENDER_PATCH, int id = -1, void* d = nullptr, size_t s = 0)
-        : type(t), patchId(id), data(d), dataSize(s) {}
+    RenderTask(Type t = RENDER_PATCH, int id = -1)
+        : type(t), patchId(id) {}
 };
 
 class RenderThread {
@@ -56,7 +56,7 @@ private:
     
     // Task processing
     void processTask(const RenderTask& task);
-    void uploadPatchData(int patchId, void* vertexData, size_t vertexSize, void* indexData, size_t indexSize);
+    void uploadPatchData(int patchId, const void* vertexData, size_t vertexSize, const void* indexData, size_t indexSize);
     
     // OpenGL context
     GLFWwindow* workerContext_;

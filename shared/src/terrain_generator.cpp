@@ -5,7 +5,8 @@
 #include <iostream>
 
 TerrainGenerator::TerrainGenerator(int gridSize, float patchSize, float heightScale)
-    : gridSize_(gridSize), patchSize_(patchSize), heightScale_(heightScale), noiseInitialized_(false) {
+    : gridSize_(gridSize), patchSize_(patchSize), heightScale_(heightScale), 
+      patchesPerRow_(8), noiseInitialized_(false) { // Default 8x8 = 64 patches
     initializeNoise();
 }
 
@@ -80,11 +81,10 @@ void TerrainGenerator::generateTerrain() {
     patches_.clear();
     
     // Generate terrain patches
-    const int patchesPerRow = std::sqrt(64); // 8x8 patches
-    const int patchVertexSize = gridSize_ / patchesPerRow;
+    const int patchVertexSize = gridSize_ / patchesPerRow_;
     
-    for (int row = 0; row < patchesPerRow; row++) {
-        for (int col = 0; col < patchesPerRow; col++) {
+    for (int row = 0; row < patchesPerRow_; row++) {
+        for (int col = 0; col < patchesPerRow_; col++) {
             TerrainPatch patch;
             createPatch(col * patchVertexSize, row * patchVertexSize, patchVertexSize, patch);
             patches_.push_back(patch);

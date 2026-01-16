@@ -21,6 +21,12 @@ private:
     bool initializeTerrain();
     bool initializeShaders();
     
+public:
+    // Configuration
+    void configureTerrain(int gridSize, int patchCount, float heightScale);
+    
+private:
+    
     // Main loop
     void update();
     void render();
