@@ -2,6 +2,7 @@
 #include <iostream>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <cstring>
 #include "../../shared/include/terrain_generator.h"
 
 RenderThread::RenderThread()
@@ -87,10 +88,17 @@ void RenderThread::submitPatchUpload(int patchId, void* vertexData, size_t verte
                                     void* indexData, size_t indexSize) {
     {
         std::lock_guard<std::mutex> lock(queueMutex_);
-        // Store vertex data and size, and pass index data by storing size in upper bits
-        // We'll use a simple encoding: store indexSize in high 32 bits, vertexSize in low 32 bits
-        uint64_t encodedSize = (static_cast<uint64_t>(indexSize) << 32) | static_cast<uint64_t>(vertexSize);
-        taskQueue_.push(RenderTask(RenderTask::UPLOAD_PATCH, patchId, vertexData, encodedSize));
+        RenderTask task(RenderTask::UPLOAD_PATCH, patchId);
+        
+        // Copy vertex data
+        task.vertexData.resize(vertexSize / sizeof(float));
+        std::memcpy(task.vertexData.data(), vertexData, vertexSize);
+        
+        // Copy index data
+        task.indexData.resize(indexSize / sizeof(unsigned int));
+        std::memcpy(task.indexData.data(), indexData, indexSize);
+        
+        taskQueue_.push(std::move(task));
     }
     queueCondition_.notify_one();
 }
@@ -117,11 +125,12 @@ void RenderThread::threadFunction() {
     // Initialize OpenGL state for this thread
     if (!contextInitialized_) {
         // Initialize GLEW for this thread
-        // glewExperimental = GL_TRUE;
-        // if (glewInit() != GLEW_OK) {
-        //     std::cerr << "Failed to initialize GLEW in render thread!" << std::endl;
-        //     return;
-        // }
+        glewExperimental = GL_TRUE;
+        GLenum glewError = glewInit();
+        if (glewError != GLEW_OK) {
+            std::cerr << "Failed to initialize GLEW in render thread! Error: " << glewGetErrorString(glewError) << std::endl;
+            return;
+        }
         
         contextInitialized_ = true;
         std::cout << "Render thread OpenGL context initialized!" << std::endl;
@@ -162,14 +171,11 @@ void RenderThread::threadFunction() {
 }
 
 void RenderThread::processTask(const RenderTask& task) {
-    // Decode the encoded sizes
-    size_t vertexSize = static_cast<size_t>(task.dataSize & 0xFFFFFFFF);
-    size_t indexSize = static_cast<size_t>(task.dataSize >> 32);
-    
     switch (task.type) {
         case RenderTask::UPLOAD_PATCH:
-            uploadPatchData(task.patchId, task.data, vertexSize, 
-                              reinterpret_cast<void*>(indexSize), indexSize);
+            uploadPatchData(task.patchId, 
+                              task.vertexData.data(), task.vertexData.size() * sizeof(float),
+                              task.indexData.data(), task.indexData.size() * sizeof(unsigned int));
             break;
             
         case RenderTask::UPDATE_BUFFER:
@@ -190,8 +196,8 @@ void RenderThread::processTask(const RenderTask& task) {
     }
 }
 
-void RenderThread::uploadPatchData(int patchId, void* vertexData, size_t vertexSize,
-                                void* indexData, size_t indexSize) {
+void RenderThread::uploadPatchData(int patchId, const void* vertexData, size_t vertexSize,
+                                const void* indexData, size_t indexSize) {
     // Actually upload vertex/index data to GPU
     
     // Convert byte sizes to vertex/index counts

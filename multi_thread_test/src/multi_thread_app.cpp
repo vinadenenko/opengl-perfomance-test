@@ -221,14 +221,15 @@ void MultiThreadApp::render() {
     currentShader.setInt("useTexture", 0);
     currentShader.setFloat("time", glfwGetTime());
     
+    // Wait for render thread to complete uploads before rendering
+    if (useMultiThreading_) {
+        waitForRenderThread();
+    }
+    
     // Render terrain patches
     const auto& patches = terrainGenerator_->getPatches();
     for (const auto& patch : patches) {
-        if (useMultiThreading_) {
-            // In multi-threaded mode, patches should be uploaded by render thread
-            // For this demo, we'll upload on-demand
-            uploadPatchToGPU(const_cast<TerrainPatch&>(patch));
-        } else {
+        if (!useMultiThreading_) {
             // Single-threaded fallback
             uploadPatchToGPU(const_cast<TerrainPatch&>(patch));
         }
